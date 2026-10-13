@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+
+# Logs
+*.log
+
+/Dataset/
+
+/Dataset/GSE15932_RAW/
+/Dataset/GSE26168_RAW/
+/Dataset/GSE164416_DP_htseq_counts.txt/
+/Dataset/GSE164416_RAW/
+/Dataset/GSE15932_RAW.tar
+/Dataset/GSE26168_RAW.tar
+/Dataset/GSE164416_DP_htseq_counts.txt.gz
+/Dataset/GSE164416_RAW.tar
