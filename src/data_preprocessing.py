@@ -41,12 +41,19 @@ from preprocessing import (
     load_gse26168_probe_map,
     load_gse15932_probe_map,
     map_probes_to_genes,
+    filter_microarray_background,
+    filter_microarray_variance,
+    filter_microarray_genes,
     preprocess_microarray_cohort,
     filter_low_counts,
+    filter_rnaseq_heuristic,
+    filter_rnaseq_distribution_aware,
+    filter_rnaseq_counts,
     calculate_deseq2_size_factors,
     normalize_deseq2,
     calculate_cpm_log2,
     preprocess_rnaseq_cohort,
+    generate_comparative_filtering_matrices,
     run_stage_3_normalization,
     validate_stage_3_outputs,
     # Stage 4
@@ -66,7 +73,7 @@ def run_pipeline(config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG) -> 
     - Stage 1: Cohort expression extraction
     - Stage 2: Clinical metadata harmonization & alignment validation
     - Stage 3: Cohort-specific normalization & preprocessing logic
-    - Stage 4: Matrix export & downstream ML preparation
+    - Stage 4: Matrix Export & Downstream ML Preparation
     - Comprehensive verification across all stages
     """
     log_step("PIPELINE", "Initiating Full Preprocessing Pipeline (Stages 1-4) with PreprocessingConfig")

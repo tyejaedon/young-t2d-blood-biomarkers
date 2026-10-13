@@ -43,9 +43,25 @@ class NormalizationSettings:
     microarray_offset: float = 1.0  # Added before log2 if values are raw intensity
     probe_aggregation_method: str = "mean"  # Options: 'mean', 'median', 'max_mean'
 
+    # Microarray low-expression filtering options:
+    # 'none': No probe/gene filtering
+    # 'background': Approach 1 - Background intensity thresholding (<= 80% background floor)
+    # 'variance': Approach 2 - Non-specific variance / IQR filtering (removes flat-line uninformative genes)
+    # 'both': Combined background floor and variance filtering
+    microarray_filtering_approach: str = "background"
+    microarray_bg_percentile: float = 0.20
+    microarray_bg_min_sample_ratio: float = 0.20  # Keep if detected in >= 20% of samples (<=80% background floor)
+    microarray_variance_threshold_percentile: float = 0.20  # Prune lowest 20% variance features
+
     # RNA-Seq settings
+    # 'heuristic': Approach 1 - Absolute total counts floor & expressing sample floor
+    # 'distribution_aware': Approach 2 - Library-size normalized CPM floor across cohort/group fraction
+    # 'none': No RNA-seq count filtering
+    rnaseq_filtering_approach: str = "heuristic"
     rnaseq_min_total_counts: int = 10
     rnaseq_min_samples_expressing: int = 5
+    rnaseq_cpm_threshold: float = 1.0
+    rnaseq_cpm_min_samples: int = 5
     rnaseq_scaling_method: str = "log2_cpm"  # Options: 'log2_cpm', 'tpm', 'deseq_median', 'deseq2'
     rnaseq_pseudo_count: float = 1.0
 
@@ -65,7 +81,7 @@ class ExportSettings:
 @dataclass
 class MetadataSettings:
     unified_metadata_filename: str = "unified_clinical_metadata.csv"
-    standard_columns: List[str] = field(default_factory=lambda: [
+    standard_columns: List[str] = field(default_factory=lambda: [\
         "sample_id",
         "cohort",
         "platform_type",
