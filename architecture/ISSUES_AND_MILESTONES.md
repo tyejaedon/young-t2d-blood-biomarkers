@@ -17,7 +17,7 @@ This document breaks the project goal — **identifying gene expression biomarke
   - **Acceptance criteria:** Thresholds documented (`|log2FC| ≥ 1`, FDR < 0.05, AUC/sensitivity/specificity reported).
 - **I-04: Create notebook and folder scaffolding** — **Complete**
   - Ensure the notebook sequence and output directories exist.
-  - **Acceptance criteria:** `../notebooks/00_project_setup.ipynb` through `05_biomarker_modeling.ipynb` are present; `data/processed/`, `results/figures/`, and `results/tables/` are used consistently.
+  - **Acceptance criteria:** `../notebooks/00_project_setup.ipynb` through `05_biomarker_modeling.ipynb` are present; `../dataset/processed`, `results/figures/`, and `results/tables/` are used consistently.
 
 **Milestone deliverable:** Approved project scope and reproducible workspace structure.
 
@@ -56,7 +56,7 @@ This document breaks the project goal — **identifying gene expression biomarke
   - **Acceptance criteria:** QC summary reports missingness and sample integrity.
 - **I-11: Apply log2 transformation and normalization**
   - Apply the required transformation and quantile normalization where appropriate.
-  - **Acceptance criteria:** Normalized matrix saved to `../data/processed`.
+  - **Acceptance criteria:** Normalized matrix saved to `../dataset/processed`.
 - **I-12: Filter low-expression genes**
   - Remove genes below the chosen background threshold.
   - **Acceptance criteria:** Filtering rule is documented and number of retained features is reported.
