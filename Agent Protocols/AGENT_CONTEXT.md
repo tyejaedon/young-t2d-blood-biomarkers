@@ -30,7 +30,7 @@
 ## 3. Mandatory Code & Engineering Standards
 
 * **Headless Visualizations:** Always set `matplotlib.use('Agg')` before importing `pyplot` to prevent display server errors in headless terminal environments.
-* **Directory Hygiene:** All scripts must write working outputs to `data/processed/`, figures to `results/figures/`, and tabular outputs to `results/tables/`.
+* **Directory Hygiene:** All scripts must write working outputs to `../dataset/processed`, figures to `results/figures/`, and tabular outputs to `results/tables/`.
 * **Logging & Transparency:** Every Python script must print clear execution logs (matrix shapes, missing value counts, variance ratios).
 * **Reproducibility:** Fix random seeds explicitly across stochastic operations (`np.random.seed(42)`, `random_state=42` in scikit-learn).
 

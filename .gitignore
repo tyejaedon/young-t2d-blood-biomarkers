@@ -20,13 +20,13 @@ Thumbs.db
 # Logs
 *.log
 
-/Dataset/
+/dataset/
 
-/Dataset/GSE15932_RAW/
-/Dataset/GSE26168_RAW/
-/Dataset/GSE164416_DP_htseq_counts.txt/
-/Dataset/GSE164416_RAW/
-/Dataset/GSE15932_RAW.tar
-/Dataset/GSE26168_RAW.tar
-/Dataset/GSE164416_DP_htseq_counts.txt.gz
-/Dataset/GSE164416_RAW.tar
+/dataset/raw/GSE15932_RAW/
+/dataset/raw/GSE26168_RAW/
+/dataset/GSE164416_DP_htseq_counts.txt/
+/dataset/raw/GSE164416_RAW/
+/dataset/raw/GSE15932_RAW.tar
+/dataset/raw/GSE26168_RAW.tar
+/dataset/raw/GSE164416_DP_htseq_counts.txt.gz
+/dataset/raw/GSE164416_RAW.tar

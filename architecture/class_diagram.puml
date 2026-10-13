@@ -1,0 +1,94 @@
+@startuml
+title Young-Onset T2D Biomarker Pipeline - Class Diagram
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+class NotebookOrchestrator {
+  +run_project_setup()
+  +load_dataset()
+  +preprocess_expression()
+  +run_differential_expression()
+  +run_pathway_enrichment()
+  +train_biomarker_model()
+  +export_results()
+}
+
+class GEODataLoader {
+  +download_raw_data()
+  +parse_metadata()
+  +load_expression_matrix()
+}
+
+class QCPreprocessor {
+  +log_transform()
+  +normalize()
+  +filter_low_expression()
+  +detect_outliers()
+}
+
+class DifferentialExpressionAnalyzer {
+  +fit_model()
+  +compute_log2fc()
+  +adjust_pvalues()
+  +rank_genes()
+}
+
+class PathwayEnrichmentAnalyzer {
+  +map_genes()
+  +run_go_enrichment()
+  +run_kegg_enrichment()
+  +run_reactome_enrichment()
+}
+
+class BiomarkerModeler {
+  +select_features()
+  +train_classifier()
+  +validate_model()
+  +evaluate_auc()
+}
+
+class ArtifactStore {
+  +save_processed_data()
+  +save_figures()
+  +save_tables()
+}
+
+class Dataset {
+  +accession
+  +platform
+  +tissue
+  +phenotype
+}
+
+class ExpressionMatrix {
+  +genes
+  +samples
+  +normalized
+}
+
+class GeneSignature {
+  +selected_genes
+  +selection_frequency
+  +model_metrics
+}
+
+NotebookOrchestrator --> GEODataLoader : coordinates
+NotebookOrchestrator --> QCPreprocessor : invokes
+NotebookOrchestrator --> DifferentialExpressionAnalyzer : invokes
+NotebookOrchestrator --> PathwayEnrichmentAnalyzer : invokes
+NotebookOrchestrator --> BiomarkerModeler : invokes
+NotebookOrchestrator --> ArtifactStore : exports outputs
+
+GEODataLoader --> Dataset : creates
+GEODataLoader --> ExpressionMatrix : loads
+QCPreprocessor --> ExpressionMatrix : transforms
+DifferentialExpressionAnalyzer --> ExpressionMatrix : analyzes
+DifferentialExpressionAnalyzer --> GeneSignature : identifies
+PathwayEnrichmentAnalyzer --> GeneSignature : interprets
+BiomarkerModeler --> GeneSignature : selects
+BiomarkerModeler --> ExpressionMatrix : trains on
+ArtifactStore --> Dataset : stores metadata
+ArtifactStore --> ExpressionMatrix : stores processed matrices
+ArtifactStore --> GeneSignature : stores biomarker panel
+
+@enduml

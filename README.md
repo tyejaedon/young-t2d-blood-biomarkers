@@ -75,7 +75,7 @@ Notebook order:
 5. `notebooks/04_pathway_enrichment.ipynb`
 6. `notebooks/05_biomarker_modeling.ipynb`
 
-Each notebook includes starter cells for reproducibility, shared paths, and placeholder analysis steps that write outputs to `data/processed/`, `results/figures/`, and `results/tables/`.
+Each notebook includes starter cells for reproducibility, shared paths, and placeholder analysis steps that write outputs to `dataset/processed`, `results/figures/`, and `results/tables/`.
 
 ---
 
