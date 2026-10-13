@@ -43,3 +43,83 @@
 * **Failure Mode 3: Overfitting on Single Dataset.** Always validate prioritized biomarkers on an independent secondary dataset (GSE15932).
 
 ---
+
+## 5. Token Economy & User Visibility Rules
+
+1. **Minimize token burn before answering.** Prefer the smallest number of file reads, searches, and edits needed to complete the task correctly.
+2. **Use bounded outputs.** Summaries should be concise, grounded in repository evidence, and avoid repeating large code/doc blocks unless explicitly requested.
+3. **Expose token cost to the user.** At the start of any non-trivial response, include a short token-burn forecast using one of:
+   * `Token Burn: Low` — one file / one direct answer.
+   * `Token Burn: Medium` — a few files, light editing, or one validation pass.
+   * `Token Burn: High` — broad codebase research, multi-file edits, or repeated validation.
+4. **Explain why the burn is necessary.** Add a one-line reason such as `Reason: requires checking preprocessing and downstream notebook dependencies.`
+5. **Avoid speculative exploration.** Do not inspect unrelated files “just in case.” Follow dependency chains only when required.
+6. **Do not restate context already present in the thread** unless it changes the decision or protects correctness.
+
+---
+
+## 6. Response Contract for Efficient Agent Behavior
+
+For complex work, structure responses in this order:
+
+1. **Acknowledgement:** one short sentence stating the next action.
+2. **Checklist:** 3–6 concrete steps only.
+3. **Token Burn:** `Low`, `Medium`, or `High` with a reason.
+4. **Execution:** perform the work without waiting for confirmation when the task is safe and clear.
+5. **Result Summary:** state what changed, where, and any follow-up commands.
+
+Preferred compact status format:
+
+```text
+Working on: <task>
+Checklist:
+- <step 1>
+- <step 2>
+- <step 3>
+Token Burn: <Low|Medium|High>
+Reason: <why>
+```
+
+---
+
+## 7. Approved Agent Skills
+
+Agents operating in this repository should prioritize these skills in order:
+
+1. **Targeted Search:** find the exact file/symbol first; stop searching once the answer location is known.
+2. **Dependency Tracing:** read only the files required to understand inputs, outputs, and side effects.
+3. **Minimal Editing:** prefer small patches over full rewrites; preserve current APIs and notebook flow.
+4. **Validation:** check edited files for errors and confirm the change did not break expected usage.
+5. **Compression:** summarize findings in decision-ready bullets instead of long narrative explanations.
+6. **Biological Grounding:** tie computational outputs back to the project’s T2D biomarker question.
+
+---
+
+## 8. Negative Prompting Guardrails (Anti-Drift)
+
+Attach the following constraints to planning or execution prompts whenever the task is non-trivial:
+
+* Do **not** browse broadly once the relevant file or function is identified.
+* Do **not** rewrite entire files when a localized patch is sufficient.
+* Do **not** provide generic textbook explanations unless the user asks for them.
+* Do **not** invent dataset properties, normalization state, or evaluation results without repository evidence.
+* Do **not** switch scope from blood-derived young-onset T2D analysis to unrelated disease, tissue, or age cohorts.
+* Do **not** spend tokens narrating internal reasoning; spend them on verified actions and concise conclusions.
+* Do **not** keep exploring after the acceptance criteria are satisfied and validation passes.
+
+---
+
+## 9. Prompt Snippet for Consistent Agent Execution
+
+Use this compact instruction block when spawning or steering an agent:
+
+```text
+Stay within the requested scope. Use the fewest repository reads needed for a correct answer.
+Before acting, estimate Token Burn as Low, Medium, or High and state the reason in one line.
+Prefer targeted edits, concise summaries, and evidence-backed claims.
+Do not drift into unrelated files, speculative refactors, or long explanations.
+Stop searching once the relevant implementation path is confirmed.
+```
+
+---
+

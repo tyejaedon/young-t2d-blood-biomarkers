@@ -45,8 +45,10 @@ Following database screening, three representative datasets were selected to sup
 
 ```text
 young-t2d-bioinformatics/
-├── blueprint.md               # Complete project blueprint & checkpoint roadmap
-├── AGENT_CONTEXT.md           # Contextual AI agent rules & project guardrails
+├── architecture/blueprint.md  # Complete project blueprint & checkpoint roadmap
+├── Agent Protocols/
+│   ├── AGENT_CONTEXT.md       # Master AI agent rules, token-efficiency guardrails, and scope boundaries
+│   └── AGENT_PROMPTS_AND_SKILLS.md # Reusable prompts, negative prompting blocks, and skills catalog
 ├── README.md                  # Main repository documentation
 ├── requirements.txt           # Python virtual environment dependencies
 ├── notebooks/                 # Jupyter notebooks for development and analysis
@@ -66,6 +68,17 @@ young-t2d-bioinformatics/
     ├── figures/               # Output boxplots, PCA plots, volcano plots (.png)
     └── tables/                # Differentially expressed gene tables (.csv)
 ```
+
+---
+
+## Agent Protocols
+
+The repository includes dedicated agent guidance in `Agent Protocols/` for efficient AI-assisted work:
+
+- `Agent Protocols/AGENT_CONTEXT.md` defines project guardrails, token-efficiency rules, user-visible token burn reporting, and anti-drift behavior.
+- `Agent Protocols/AGENT_PROMPTS_AND_SKILLS.md` provides reusable prompt templates, negative prompting blocks, and an approved skills catalog for focused agent execution.
+
+Use these documents when you want AI agents to stay within scope, minimize unnecessary repository reads, and clearly communicate expected token burn before deeper work begins.
 
 ---
 
