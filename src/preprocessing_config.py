@@ -40,11 +40,12 @@ class NormalizationSettings:
     microarray_log2_transform: bool = True
     microarray_quantile_normalize: bool = True
     microarray_offset: float = 1.0  # Added before log2 if values are raw intensity
+    probe_aggregation_method: str = "mean"  # Options: 'mean', 'median', 'max_mean'
 
     # RNA-Seq settings
     rnaseq_min_total_counts: int = 10
     rnaseq_min_samples_expressing: int = 5
-    rnaseq_scaling_method: str = "log2_cpm"  # Options: 'log2_cpm', 'tpm', 'deseq_median'
+    rnaseq_scaling_method: str = "log2_cpm"  # Options: 'log2_cpm', 'tpm', 'deseq_median', 'deseq2'
     rnaseq_pseudo_count: float = 1.0
 
 
