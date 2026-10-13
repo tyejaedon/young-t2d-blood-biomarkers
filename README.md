@@ -5,11 +5,12 @@
 This repository contains the complete computational workflow, notebook-based analysis environment, statistical models, and documentation for Group E9's research project: **"Gene Expression Biomarkers for Early Detection of Young-Onset Type 2 Diabetes Mellitus"**.
 
 Standard clinical screening tools (HbA1c, fasting blood glucose) flag diabetes only after substantial, irreversible pancreatic beta-cell exhaustion has taken root. This study leverages public blood-derived transcriptomic profiles (Microarray / RNA-seq) from NCBI GEO to identify early molecular markers of systemic cellular stress in young adults (ages 18–40).
+
 ---
 ## Research Objectives & Questions
 The overarching question this project aspires to uncover is, can computational analysis of public blood-derived transcriptomic profiles distinguish young adults (ages 18–40) with Type 2 Diabetes Mellitus (T2D) from healthy controls and identify high-confidence candidate biomarkers for early detection?
 
- **To answer this research question, the project executes four sequential aims:** 
+To answer this research question, the project executes four sequential aims:** 
 1. Dataset Curation & Quality Control: Retrieve human blood transcriptomic datasets (Microarray or RNA-seq) from NCBI GEO/ArrayExpress, filter for young adult cohorts (ages 18–40), and perform standard quality checks, missing-value handling, and cross-sample normalization. 
 2. Differential Expression Analysis (DEA): Identify significantly dysregulated genes between T2D cases and normoglycemic controls using statistical methods (limma or DESeq2) with strict filtering thresholds (|log₂FC| ≥ 1 and adjusted p<0.05). 
 3. Functional Pathway Annotation: Map differentially expressed genes to biological processes via Gene Ontology (GO) and KEGG/Reactome pathway over-representation analysis to uncover early metabolic and inflammatory dysregulations.
