@@ -5,7 +5,28 @@
 This repository contains the complete computational workflow, notebook-based analysis environment, statistical models, and documentation for Group E9's research project: **"Gene Expression Biomarkers for Early Detection of Young-Onset Type 2 Diabetes Mellitus"**.
 
 Standard clinical screening tools (HbA1c, fasting blood glucose) flag diabetes only after substantial, irreversible pancreatic beta-cell exhaustion has taken root. This study leverages public blood-derived transcriptomic profiles (Microarray / RNA-seq) from NCBI GEO to identify early molecular markers of systemic cellular stress in young adults (ages 18–40).
+---
+## Research Objectives & Questions
+The overarching question this project aspires to uncover is, can computational analysis of public blood-derived transcriptomic profiles distinguish young adults (ages 18–40) with Type 2 Diabetes Mellitus (T2D) from healthy controls and identify high-confidence candidate biomarkers for early detection?
 
+ **To answer this research question, the project executes four sequential aims:** 
+1. Dataset Curation & Quality Control: Retrieve human blood transcriptomic datasets (Microarray or RNA-seq) from NCBI GEO/ArrayExpress, filter for young adult cohorts (ages 18–40), and perform standard quality checks, missing-value handling, and cross-sample normalization. 
+2. Differential Expression Analysis (DEA): Identify significantly dysregulated genes between T2D cases and normoglycemic controls using statistical methods (limma or DESeq2) with strict filtering thresholds (|log₂FC| ≥ 1 and adjusted p<0.05). 
+3. Functional Pathway Annotation: Map differentially expressed genes to biological processes via Gene Ontology (GO) and KEGG/Reactome pathway over-representation analysis to uncover early metabolic and inflammatory dysregulations.
+4. Biomarker Selection & Classification: Apply feature selection algorithms to narrow down top gene candidates and train a supervised classifier (e.g., Random Forest or Support Vector Machine) to evaluate biomarker accuracy and predictive performance.
+
+---
+## Hypothesis
+We hypothesize that young adults with early-onset T2D exhibit a distinct blood transcriptomic signature compared to healthy controls, and that a subset of these differentially expressed genes can serve as reliable biomarkers for early detection, potentially enabling preemptive clinical interventions.
+### Central Primary Hypothesis (H1):
+> Systemic blood-derived transcriptomic profiles (PBMCs / whole blood) of young adults aged 18–40 contain distinct, statistically significant gene expression alterations that reliably distinguish young-onset Type 2 Diabetes Mellitus (T2D) patients from normoglycemic healthy controls
+* **Plain English** *: Circulating white blood cells act like network monitoring daemons—as they pass through stressed organs, their active gene instructions change, allowing us to detect early diabetes in blood before blood sugar tests spike.
+###  Biological Pathomechanism Sub-Hypothesis (H2):
+> Differentially expressed genes in young-onset T2D blood samples are significantly enriched in biological pathway networks governing chronic innate immune activation (e.g., TNF-$\alpha$ and NF-$\kappa$B cytokine signaling) and disrupted cellular energy regulation (e.g., the PI3K/Akt insulin signaling cascade).
+* **Plain English** *: The specific genes turned ON or OFF in young diabetes patients will cluster around two main cellular problems: constant low-level inflammation and broken insulin communication pipelines.
+### Predictive Model Hypothesis
+> A feature-selected panel of high-confidence candidate transcripts extracted via dimensional reduction (e.g., LASSO or Recursive Feature Elimination) and trained on a supervised classifier (e.g., Random Forest or Support Vector Machine) will yield strong diagnostic performance (AUC $\ge 0.85$, Sensitivity $\ge 80\%$) in identifying young-onset T2D.
+* **Plain English** *: By selecting the most informative genes and training a machine learning model, we can accurately predict which young adults have early-onset T2D.
 ---
 
 Following database screening, three representative datasets were selected to support primary discovery, secondary validation, and cross-tissue biological contextualization. Their defining characteristics are summarized below:
