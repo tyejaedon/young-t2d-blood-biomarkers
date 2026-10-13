@@ -5,11 +5,12 @@
 This repository contains the complete computational workflow, notebook-based analysis environment, statistical models, and documentation for Group E9's research project: **"Gene Expression Biomarkers for Early Detection of Young-Onset Type 2 Diabetes Mellitus"**.
 
 Standard clinical screening tools (HbA1c, fasting blood glucose) flag diabetes only after substantial, irreversible pancreatic beta-cell exhaustion has taken root. This study leverages public blood-derived transcriptomic profiles (Microarray / RNA-seq) from NCBI GEO to identify early molecular markers of systemic cellular stress in young adults (ages 18–40).
+
 ---
 ## Research Objectives & Questions
 The overarching question this project aspires to uncover is, can computational analysis of public blood-derived transcriptomic profiles distinguish young adults (ages 18–40) with Type 2 Diabetes Mellitus (T2D) from healthy controls and identify high-confidence candidate biomarkers for early detection?
 
- **To answer this research question, the project executes four sequential aims:** 
+To answer this research question, the project executes four sequential aims:** 
 1. Dataset Curation & Quality Control: Retrieve human blood transcriptomic datasets (Microarray or RNA-seq) from NCBI GEO/ArrayExpress, filter for young adult cohorts (ages 18–40), and perform standard quality checks, missing-value handling, and cross-sample normalization. 
 2. Differential Expression Analysis (DEA): Identify significantly dysregulated genes between T2D cases and normoglycemic controls using statistical methods (limma or DESeq2) with strict filtering thresholds (|log₂FC| ≥ 1 and adjusted p<0.05). 
 3. Functional Pathway Annotation: Map differentially expressed genes to biological processes via Gene Ontology (GO) and KEGG/Reactome pathway over-representation analysis to uncover early metabolic and inflammatory dysregulations.
@@ -44,8 +45,10 @@ Following database screening, three representative datasets were selected to sup
 
 ```text
 young-t2d-bioinformatics/
-├── blueprint.md               # Complete project blueprint & checkpoint roadmap
-├── AGENT_CONTEXT.md           # Contextual AI agent rules & project guardrails
+├── architecture/blueprint.md  # Complete project blueprint & checkpoint roadmap
+├── Agent Protocols/
+│   ├── AGENT_CONTEXT.md       # Master AI agent rules, token-efficiency guardrails, and scope boundaries
+│   └── AGENT_PROMPTS_AND_SKILLS.md # Reusable prompts, negative prompting blocks, and skills catalog
 ├── README.md                  # Main repository documentation
 ├── requirements.txt           # Python virtual environment dependencies
 ├── notebooks/                 # Jupyter notebooks for development and analysis
@@ -65,6 +68,17 @@ young-t2d-bioinformatics/
     ├── figures/               # Output boxplots, PCA plots, volcano plots (.png)
     └── tables/                # Differentially expressed gene tables (.csv)
 ```
+
+---
+
+## Agent Protocols
+
+The repository includes dedicated agent guidance in `Agent Protocols/` for efficient AI-assisted work:
+
+- `Agent Protocols/AGENT_CONTEXT.md` defines project guardrails, token-efficiency rules, user-visible token burn reporting, and anti-drift behavior.
+- `Agent Protocols/AGENT_PROMPTS_AND_SKILLS.md` provides reusable prompt templates, negative prompting blocks, and an approved skills catalog for focused agent execution.
+
+Use these documents when you want AI agents to stay within scope, minimize unnecessary repository reads, and clearly communicate expected token burn before deeper work begins.
 
 ---
 
