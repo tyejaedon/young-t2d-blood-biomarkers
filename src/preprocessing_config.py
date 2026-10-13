@@ -1,7 +1,7 @@
 """
 Preprocessing Configuration Module
 Centralized settings, cohort definitions, paths, normalization parameters,
-and clinical schemas for the data preprocessing pipeline.
+export configurations, and clinical schemas for the data preprocessing pipeline.
 """
 
 from pathlib import Path
@@ -19,6 +19,7 @@ class PathSettings:
     dataset_raw: Path = PROJECT_ROOT / "dataset" / "raw"
     data_raw_alt: Path = PROJECT_ROOT / "data" / "raw"
     data_processed: Path = PROJECT_ROOT / "data" / "processed"
+    dataset_processed: Path = PROJECT_ROOT / "dataset" / "processed"
 
 
 @dataclass
@@ -50,6 +51,18 @@ class NormalizationSettings:
 
 
 @dataclass
+class ExportSettings:
+    export_csv_uncompressed: bool = True
+    export_tsv: bool = True
+    export_ml_ready: bool = True
+    export_cross_cohort_harmonized: bool = True
+    export_manifest_filename: str = "matrix_export_manifest.csv"
+    cross_cohort_expression_filename: str = "cross_cohort_blood_expression_harmonized.csv.gz"
+    cross_cohort_ml_filename: str = "cross_cohort_blood_ml_ready.csv.gz"
+    mirror_to_dataset_processed: bool = True
+
+
+@dataclass
 class MetadataSettings:
     unified_metadata_filename: str = "unified_clinical_metadata.csv"
     standard_columns: List[str] = field(default_factory=lambda: [
@@ -74,6 +87,7 @@ class MetadataSettings:
 class PreprocessingConfig:
     paths: PathSettings = field(default_factory=PathSettings)
     normalization: NormalizationSettings = field(default_factory=NormalizationSettings)
+    export: ExportSettings = field(default_factory=ExportSettings)
     metadata: MetadataSettings = field(default_factory=MetadataSettings)
     cohorts: Dict[str, CohortSettings] = field(default_factory=lambda: {
         "GSE26168": CohortSettings(
