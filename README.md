@@ -8,6 +8,17 @@ Standard clinical screening tools (HbA1c, fasting blood glucose) flag diabetes o
 
 ---
 
+Following database screening, three representative datasets were selected to support primary discovery, secondary validation, and cross-tissue biological contextualization. Their defining characteristics are summarized below:
+
+| Dataset | GEO Accession | Project Role | Organism & Tissue | Assay Platform | Data Format | Cohort Phenotypes | Metadata Features |
+|---|---|---|---|---|---|---|---|
+| GSE26168 | NCBI GEO: GSE26168 | Primary Discovery Set | Homo sapiens / Whole Blood | Affymetrix Human Genome U133 Plus 2.0 (GPL570) | Normalized Probe Intensity Matrix | T2D Cases vs. Healthy Controls | Age, gender, disease state |
+| GSE15932 | NCBI GEO: GSE15932 | Independent Validation Set | Homo sapiens / PBMCs | Affymetrix Human Gene 1.0 ST (GPL6244) | Processed Gene Expression Matrix | Impaired Glucose Tolerance / T2D vs. Controls | Age, glycemic status, BMI |
+| GSE164416 | NCBI GEO: GSE164416 | Cross-Tissue Contextual Set only; not used as a validation cohort | Homo sapiens / Pancreatic Islets | Illumina HiSeq 2500 (GPL16791) | Raw HTSeq Read Counts (.txt.gz) | Non-Diabetic, IGT, T2D, T3cD | Age, glycemic status, INS expression |
+
+> **Scope note:** `GSE164416` is retained strictly for cross-tissue biological context and should not be interpreted as the secondary validation dataset.
+
+
 ## Repository Structure
 
 ```text
