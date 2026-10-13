@@ -49,7 +49,10 @@ By analyzing publicly available blood-derived transcriptomic profiles (Microarra
 * **Preprocessing Pipeline:**
   * Ingestion & missing value check (`GEOparse` / `pandas`).
   * $\log_2(x + 1)$ transformation and Quantile Normalization.
-  * Low-expression gene filtering ($\le 80\%$ background threshold).
+  * **Low-Expression Filtering Strategy (Dual Comparative Analysis):**
+    * *Approach 1 (Heuristic / Absolute Floor):* Total count sum $\ge 10$ & $\ge 5$ expressing samples for RNA-seq; $\le 80\%$ background floor for microarrays.
+    * *Approach 2 (Distribution-Aware / Cohort-Fraction):* Group-aware CPM ($\text{CPM} \ge 1.0$ across $\ge \min(n_{\text{group}})$ samples) with DESeq2 independent filtering; non-specific variance/IQR filtering with MaxMean probe collapse for microarrays.
+    * Track both approaches head-to-head across all downstream biological outcomes (DEA, pathway enrichment, and ML classification).
   * Outlier detection via sample intensity Boxplots and Principal Component Analysis (PCA).
 
 ### Stage 4: Differential Expression & Machine Learning (Checkpoint 4)

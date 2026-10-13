@@ -125,6 +125,38 @@ Each notebook includes starter cells for reproducibility, shared paths, and plac
 
 ---
 
+## Dual Low-Expression Filtering Strategy & Comparative Pipeline Analysis
+
+To prevent arbitrary threshold selection and rigorously evaluate the sensitivity and biological fidelity of transcriptomic biomarker discovery, the pipeline implements and contrasts **two complementary low-expression filtering approaches** anchored in [`src/preprocessing/normalization.py`](file:///C:/Bioinformatics%20Project/src/preprocessing/normalization.py) and orchestrated through [`src/data_preprocessing.py`](file:///C:/Bioinformatics%20Project/src/data_preprocessing.py):
+
+### 1. Dual Filtering Methodologies
+
+| Dimension | Approach 1: Heuristic / Absolute Thresholding | Approach 2: Distribution-Aware / Cohort-Fraction Thresholding |
+| :--- | :--- | :--- |
+| **RNA-Seq Filtering (`GSE164416`)** | **Total Count & Sample Floor:** Retains transcripts meeting $\sum \text{counts} \ge 10$ and count $\ge 1$ in $\ge 5$ donor samples ([`filter_low_counts`](file:///C:/Bioinformatics%20Project/src/preprocessing/normalization.py#L273-L298)). | **Library-Adjusted CPM / Group Floor:** Retains genes with $\text{CPM} \ge 1.0$ across at least $k = \min(n_{\text{group}})$ samples (emulating `filterByExpr`) coupled with DESeq2 independent filtering. |
+| **Microarray Filtering (`GSE26168`, `GSE15932`)** | **Background Intensity Floor:** Probe retention based on global background intensity thresholding ($\le 80\%$ background floor) and standard probe averaging (`mean`). | **Non-Specific Variance & MaxMean Selection:** Uninformative flat-line probe removal via IQR/variance percentile filtering and `max_mean` probe collapse. |
+| **Primary Methodological Focus** | Minimizes technical dropouts and preserves broad exploratory feature space. | Optimizes statistical testing power by aggressively pruning heteroskedastic shot noise. |
+
+### 2. End-to-End Comparative Evaluation Across the Biological Pipeline
+
+Rather than fixing an arbitrary filter cutoff upfront, the pipeline executes a systematic head-to-head comparative analysis evaluating both filtering branches across every downstream biological milestone:
+
+1. **QC & Distribution Dynamics ([`notebooks/02_qc_preprocessing.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/02_qc_preprocessing.ipynb)):**
+   - Assesses impact on matrix sparsity, dynamic range, and heteroskedasticity stabilization ($\rho$ between feature mean and standard deviation).
+   - Compares unsupervised sample clustering and phenotypic separation along top principal components (PCA).
+2. **Differential Expression Analysis Yield ([`notebooks/03_differential_expression.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/03_differential_expression.ipynb)):**
+   - Quantifies statistical DEG yields at strict criteria ($|\log_2\text{FC}| \ge 1.0$, FDR-adjusted $p < 0.05$).
+   - Evaluates the trade-off between Benjamini-Hochberg multiple testing penalty reduction vs. potential loss of subtle low-abundance regulatory transcripts.
+3. **Biological Pathway Enrichment ([`notebooks/04_pathway_enrichment.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/04_pathway_enrichment.ipynb)):**
+   - Tests over-representation of core T2D pathomechanism networks: chronic innate immune activation (TNF-$\alpha$, NF-$\kappa$B) and insulin signaling disruption (PI3K/Akt).
+   - Determines whether distribution-aware filtering enriches genuine biological signal or inadvertently discards relevant disease pathways.
+4. **Predictive Biomarker Modeling ([`notebooks/05_biomarker_modeling.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/05_biomarker_modeling.ipynb)):**
+   - Evaluates classifier performance (AUC-ROC $\ge 0.85$, sensitivity $\ge 80\%$, specificity $\ge 80\%$, balanced accuracy $\ge 0.80$).
+   - Compares biomarker panel parsimony and stability of selected 5–15 gene candidates across 10-fold cross-validation.
+   - Tests external validation generalizability from whole blood discovery (`GSE26168`) to PBMC validation (`GSE15932`).
+
+---
+
 ## Analysis Success Criteria
 
 The machine learning pipeline is considered successful when it meets all three of the following goals:

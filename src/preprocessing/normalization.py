@@ -258,6 +258,7 @@ def preprocess_microarray_cohort(
         probe_map,
         method=norm_cfg.probe_aggregation_method
     )
+    df_gene = filter_microarray_background(df_gene)
 
     # 4. Save to Disk
     dest_path = config.paths.data_processed / cohort_cfg.normalized_output_filename
@@ -266,6 +267,24 @@ def preprocess_microarray_cohort(
     log_step(f"STAGE-3: {cohort_name}", f"Saved normalized gene matrix to {dest_path.name} ({df_gene.shape[0]} genes x {df_gene.shape[1]} samples)")
 
     return df_gene
+
+def filter_microarray_background(
+        df: pd.DataFrame,
+        background_percentile: float = 0.20,
+        min_sample_ratio: float = 0.20  # Drop if <= 80% background (keep if > 20% expressed)
+) -> pd.DataFrame:
+    """
+    Filters microarray probes whose expression fails to exceed background threshold.
+    """
+    # Estimate chip background noise (e.g., lower 20th percentile across whole matrix)
+    bg_threshold = np.percentile(df.values, background_percentile * 100)
+
+    # Gene is 'detected' if intensity exceeds background threshold
+    expressed_samples_per_gene = (df > bg_threshold).sum(axis=1)
+    min_samples = int(np.ceil(min_sample_ratio * df.shape[1]))
+
+    keep_mask = expressed_samples_per_gene >= min_samples
+    return df[keep_mask].copy()
 
 
 # --- RNA-Seq Filtering, DESeq2 Size-Factors & CPM Logic ---
