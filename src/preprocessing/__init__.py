@@ -3,7 +3,7 @@ Preprocessing Package
 Modular stages for genomic and transcriptomic data preprocessing:
 - extraction: Stage 1 cohort expression matrix extraction
 - metadata: Stage 2 clinical & phenotypic metadata harmonization
-- normalization: Stage 3 microarray & RNA-Seq normalization logic
+- normalization: Stage 3 microarray & RNA-Seq normalization logic (with dual filtering & comparative analysis)
 - exports: Stage 4 analysis-ready and ML-ready matrix exports
 - common: shared logging and utility routines
 """
@@ -33,12 +33,19 @@ from preprocessing.normalization import (
     load_gse26168_probe_map,
     load_gse15932_probe_map,
     map_probes_to_genes,
+    filter_microarray_background,
+    filter_microarray_variance,
+    filter_microarray_genes,
     preprocess_microarray_cohort,
     filter_low_counts,
+    filter_rnaseq_heuristic,
+    filter_rnaseq_distribution_aware,
+    filter_rnaseq_counts,
     calculate_deseq2_size_factors,
     normalize_deseq2,
     calculate_cpm_log2,
     preprocess_rnaseq_cohort,
+    generate_comparative_filtering_matrices,
     run_stage_3_normalization,
     validate_stage_3_outputs,
 )
@@ -74,12 +81,19 @@ __all__ = [
     "load_gse26168_probe_map",
     "load_gse15932_probe_map",
     "map_probes_to_genes",
+    "filter_microarray_background",
+    "filter_microarray_variance",
+    "filter_microarray_genes",
     "preprocess_microarray_cohort",
     "filter_low_counts",
+    "filter_rnaseq_heuristic",
+    "filter_rnaseq_distribution_aware",
+    "filter_rnaseq_counts",
     "calculate_deseq2_size_factors",
     "normalize_deseq2",
     "calculate_cpm_log2",
     "preprocess_rnaseq_cohort",
+    "generate_comparative_filtering_matrices",
     "run_stage_3_normalization",
     "validate_stage_3_outputs",
     # Stage 4

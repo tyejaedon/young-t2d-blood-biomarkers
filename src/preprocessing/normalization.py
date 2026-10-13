@@ -1,7 +1,11 @@
 """
 Stage 3: Normalization & Preprocessing Logic
 - Microarray: Log2 transformation, quantile normalization, probe mapping to HGNC Gene Symbols
-- RNA-Seq: Low-count filtering, DESeq2 size-factor normalization & CPM log2 transformation
+- Low-Expression Filtering: Dual implementation supporting both:
+    * Approach 1: Heuristic / Absolute Floor (Microarray background floor <= 80%; RNA-Seq count sum >= 10)
+    * Approach 2: Distribution-Aware / Cohort-Fraction (Microarray IQR/variance filtering; RNA-Seq CPM >= 1.0)
+- Comparative Analysis: Automated generator for comparative matrices across both filtering strategies
+- RNA-Seq: DESeq2 size-factor normalization & Counts Per Million (CPM) log2 transformation
 - Output integrity and metadata alignment verification
 """
 
@@ -18,7 +22,9 @@ from preprocessing_config import (
 from preprocessing.common import log_step
 
 
-# --- Microarray Normalization & Probe Mapping Logic ---
+# ==============================================================================
+# Microarray Normalization, Probe Mapping & Dual Filtering Logic
+# ==============================================================================
 
 def log2_transform_microarray(df: pd.DataFrame, offset: float = 1.0) -> pd.DataFrame:
     """
@@ -190,7 +196,7 @@ def map_probes_to_genes(
     """
     mapped_series = df.index.map(probe_map)
     valid_mask = mapped_series.notna() & (mapped_series != "") & (mapped_series != "---")
-    
+
     n_total = len(df)
     n_mapped = valid_mask.sum()
     log_step("STAGE-3: AGG", f"Mapping probes to symbols: {n_mapped}/{n_total} probes mapped ({n_total - n_mapped} unmapped dropped)")
@@ -218,17 +224,121 @@ def map_probes_to_genes(
     return aggregated
 
 
+# --- Microarray Filtering Approaches ---
+
+def filter_microarray_background(
+    df: pd.DataFrame,
+    background_percentile: float = 0.20,
+    min_sample_ratio: float = 0.20
+) -> pd.DataFrame:
+    """
+    Approach 1: Heuristic Background Floor Filtering for Microarrays.
+    Filters probes/genes whose expression fails to exceed the empirical background threshold.
+    Retains genes with signal > background noise in at least min_sample_ratio of samples
+    (e.g., drops genes in <= 80% background noise per blueprint.md Stage 3).
+    """
+    n_before = len(df)
+    bg_threshold = float(np.percentile(df.values, background_percentile * 100))
+    min_samples = int(np.ceil(min_sample_ratio * df.shape[1]))
+
+    expressed_mask = (df > bg_threshold).sum(axis=1) >= min_samples
+    df_filtered = df[expressed_mask].copy()
+    n_after = len(df_filtered)
+
+    log_step(
+        "STAGE-3: ARRAY-BG-FILTER",
+        f"Approach 1 (Background Floor): {n_after}/{n_before} genes retained ({n_before - n_after} removed, "
+        f"cutoff: > {bg_threshold:.2f} [p{int(background_percentile*100)}] in >= {min_samples}/{df.shape[1]} samples)"
+    )
+    return df_filtered
+
+
+def filter_microarray_variance(
+    df: pd.DataFrame,
+    threshold_percentile: float = 0.20,
+    method: str = "iqr"
+) -> pd.DataFrame:
+    """
+    Approach 2: Distribution-Aware Non-Specific Variance Filtering for Microarrays.
+    Prunes invariant 'flat-line' genes that contribute technical noise and excessive
+    multiple testing penalty without biological variance across samples (Bourgon et al., 2010).
+    Methods:
+    - 'iqr': Interquartile Range (75th - 25th percentile)
+    - 'std': Standard deviation across samples
+    """
+    n_before = len(df)
+    if method == "iqr":
+        variabilities = df.quantile(0.75, axis=1) - df.quantile(0.25, axis=1)
+    elif method == "std":
+        variabilities = df.std(axis=1)
+    else:
+        raise ValueError(f"Unknown variance filter method '{method}'. Choose 'iqr' or 'std'.")
+
+    cutoff = float(np.percentile(variabilities, threshold_percentile * 100))
+    keep_mask = variabilities >= cutoff
+    df_filtered = df[keep_mask].copy()
+    n_after = len(df_filtered)
+
+    log_step(
+        "STAGE-3: ARRAY-VAR-FILTER",
+        f"Approach 2 (Variance Floor): {n_after}/{n_before} genes retained ({n_before - n_after} removed, "
+        f"{method.upper()} cutoff: >= {cutoff:.4f} [pruning bottom {int(threshold_percentile*100)}% lowest variability])"
+    )
+    return df_filtered
+
+
+def filter_microarray_genes(
+    df: pd.DataFrame,
+    config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG,
+    approach: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Unified dispatcher for microarray low-expression filtering.
+    Selects filtering approach:
+    - 'background': Approach 1 (Heuristic background floor <= 80%)
+    - 'variance': Approach 2 (Distribution-aware non-specific variability)
+    - 'both': Sequentially applies background floor and variance pruning
+    - 'none': Preserves all mapped features
+    """
+    norm_cfg = config.normalization
+    selected_approach = (approach or norm_cfg.microarray_filtering_approach).lower()
+
+    if selected_approach == "none":
+        log_step("STAGE-3: ARRAY-FILTER", "Microarray filtering set to 'none'. Retaining all mapped genes.")
+        return df.copy()
+
+    filtered = df
+    if selected_approach in ["background", "both"]:
+        filtered = filter_microarray_background(
+            filtered,
+            background_percentile=norm_cfg.microarray_bg_percentile,
+            min_sample_ratio=norm_cfg.microarray_bg_min_sample_ratio
+        )
+
+    if selected_approach in ["variance", "both"]:
+        filtered = filter_microarray_variance(
+            filtered,
+            threshold_percentile=norm_cfg.microarray_variance_threshold_percentile,
+            method="iqr"
+        )
+
+    return filtered
+
+
 def preprocess_microarray_cohort(
     cohort_name: str,
     df_raw: pd.DataFrame,
-    config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG
+    config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG,
+    filtering_approach: Optional[str] = None,
+    persist: bool = True
 ) -> pd.DataFrame:
     """
     Executes full Stage 3 preprocessing for a microarray cohort:
     1. Log2 transformation (with offset and clipping)
     2. Quantile normalization
     3. Probe mapping and aggregation to HGNC Gene Symbols
-    4. Persists processed matrix to disk
+    4. Low-expression filtering (Approach 1 background floor, Approach 2 variance, or both)
+    5. Optionally persists processed matrix to disk
     """
     cohort_cfg = config.cohorts[cohort_name]
     norm_cfg = config.normalization
@@ -253,41 +363,33 @@ def preprocess_microarray_cohort(
     else:
         raise ValueError(f"No probe mapping configuration registered for cohort '{cohort_name}'")
 
+    # If Approach 2 (variance) is selected, allow max_mean probe aggregation if configured
+    agg_method = norm_cfg.probe_aggregation_method
+    if filtering_approach == "variance" and agg_method == "mean":
+        agg_method = "max_mean"
+
     df_gene = map_probes_to_genes(
         df_normalized,
         probe_map,
-        method=norm_cfg.probe_aggregation_method
+        method=agg_method
     )
-    df_gene = filter_microarray_background(df_gene)
 
-    # 4. Save to Disk
-    dest_path = config.paths.data_processed / cohort_cfg.normalized_output_filename
-    dest_path.parent.mkdir(parents=True, exist_ok=True)
-    df_gene.to_csv(dest_path, compression="gzip")
-    log_step(f"STAGE-3: {cohort_name}", f"Saved normalized gene matrix to {dest_path.name} ({df_gene.shape[0]} genes x {df_gene.shape[1]} samples)")
+    # 4. Low-expression Gene Filtering
+    df_filtered = filter_microarray_genes(df_gene, config=config, approach=filtering_approach)
 
-    return df_gene
+    # 5. Save to Disk
+    if persist:
+        dest_path = config.paths.data_processed / cohort_cfg.normalized_output_filename
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        df_filtered.to_csv(dest_path, compression="gzip")
+        log_step(f"STAGE-3: {cohort_name}", f"Saved normalized gene matrix to {dest_path.name} ({df_filtered.shape[0]} genes x {df_filtered.shape[1]} samples)")
 
-def filter_microarray_background(
-        df: pd.DataFrame,
-        background_percentile: float = 0.20,
-        min_sample_ratio: float = 0.20  # Drop if <= 80% background (keep if > 20% expressed)
-) -> pd.DataFrame:
-    """
-    Filters microarray probes whose expression fails to exceed background threshold.
-    """
-    # Estimate chip background noise (e.g., lower 20th percentile across whole matrix)
-    bg_threshold = np.percentile(df.values, background_percentile * 100)
-
-    # Gene is 'detected' if intensity exceeds background threshold
-    expressed_samples_per_gene = (df > bg_threshold).sum(axis=1)
-    min_samples = int(np.ceil(min_sample_ratio * df.shape[1]))
-
-    keep_mask = expressed_samples_per_gene >= min_samples
-    return df[keep_mask].copy()
+    return df_filtered
 
 
-# --- RNA-Seq Filtering, DESeq2 Size-Factors & CPM Logic ---
+# ==============================================================================
+# RNA-Seq Filtering, DESeq2 Size-Factors & CPM Logic
+# ==============================================================================
 
 def filter_low_counts(
     df: pd.DataFrame,
@@ -296,10 +398,11 @@ def filter_low_counts(
     min_count: int = 1
 ) -> pd.DataFrame:
     """
-    Filters out lowly expressed / non-informative genes in RNA-Seq data.
+    Approach 1: Heuristic Absolute Floor Filtering for RNA-Seq.
+    Filters out lowly expressed / non-informative transcripts in count matrices.
     Retains genes with:
     - Total sum across all samples >= min_total_counts
-    - Expression (counts >= min_count) in at least min_samples_expressing samples
+    - Counts >= min_count in at least min_samples_expressing samples
     """
     n_before = len(df)
     total_mask = df.sum(axis=1) >= min_total_counts
@@ -310,10 +413,80 @@ def filter_low_counts(
     n_after = len(df_filtered)
     log_step(
         "STAGE-3: RNA-FILTER",
-        f"Filtered low counts: {n_after}/{n_before} genes retained ({n_before - n_after} removed, "
+        f"Approach 1 (Heuristic Floor): {n_after}/{n_before} genes retained ({n_before - n_after} removed, "
         f"criteria: total >= {min_total_counts} and count >= {min_count} in >= {min_samples_expressing} samples)"
     )
     return df_filtered
+
+
+# Alias for Approach 1
+filter_rnaseq_heuristic = filter_low_counts
+
+
+def filter_rnaseq_distribution_aware(
+    df: pd.DataFrame,
+    min_cpm: float = 1.0,
+    min_samples: int = 5,
+    min_fraction: Optional[float] = None
+) -> pd.DataFrame:
+    """
+    Approach 2: Distribution-Aware / Cohort-Fraction CPM Filtering for RNA-Seq.
+    Normalizes for library size disparities before filtering (mirroring edgeR::filterByExpr).
+    Retains genes with Counts Per Million (CPM) >= min_cpm in at least min_samples (or min_fraction * N).
+    """
+    n_before = len(df)
+    library_sizes = df.sum(axis=0)
+    cpm = df.divide(library_sizes, axis=1) * 1e6
+
+    target_samples = min_samples
+    if min_fraction is not None:
+        target_samples = max(min_samples, int(np.ceil(min_fraction * df.shape[1])))
+
+    cpm_mask = (cpm >= min_cpm).sum(axis=1) >= target_samples
+    df_filtered = df[cpm_mask].copy()
+    n_after = len(df_filtered)
+
+    log_step(
+        "STAGE-3: RNA-CPM-FILTER",
+        f"Approach 2 (Distribution-Aware CPM): {n_after}/{n_before} genes retained ({n_before - n_after} removed, "
+        f"criteria: CPM >= {min_cpm:.1f} in >= {target_samples}/{df.shape[1]} samples)"
+    )
+    return df_filtered
+
+
+def filter_rnaseq_counts(
+    df: pd.DataFrame,
+    config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG,
+    approach: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Unified dispatcher for RNA-Seq count matrix filtering.
+    Selects filtering approach:
+    - 'heuristic': Approach 1 (Total count sum floor & expressing sample floor)
+    - 'distribution_aware': Approach 2 (Library-adjusted CPM floor across cohort/group fraction)
+    - 'none': Preserves all raw feature rows
+    """
+    norm_cfg = config.normalization
+    selected_approach = (approach or norm_cfg.rnaseq_filtering_approach).lower()
+
+    if selected_approach == "none":
+        log_step("STAGE-3: RNA-FILTER", "RNA-Seq filtering set to 'none'. Retaining all features.")
+        return df.copy()
+    elif selected_approach in ["heuristic", "counts", "approach_1"]:
+        return filter_low_counts(
+            df,
+            min_total_counts=norm_cfg.rnaseq_min_total_counts,
+            min_samples_expressing=norm_cfg.rnaseq_min_samples_expressing,
+            min_count=1
+        )
+    elif selected_approach in ["distribution_aware", "cpm", "approach_2"]:
+        return filter_rnaseq_distribution_aware(
+            df,
+            min_cpm=norm_cfg.rnaseq_cpm_threshold,
+            min_samples=norm_cfg.rnaseq_cpm_min_samples
+        )
+    else:
+        raise ValueError(f"Unknown RNA-Seq filtering approach: '{selected_approach}'. Choose 'heuristic', 'distribution_aware', or 'none'.")
 
 
 def calculate_deseq2_size_factors(df: pd.DataFrame) -> pd.Series:
@@ -385,14 +558,16 @@ def calculate_cpm_log2(df: pd.DataFrame, pseudo_count: float = 1.0) -> pd.DataFr
 
 def preprocess_rnaseq_cohort(
     df_raw: pd.DataFrame,
-    config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG
+    config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG,
+    filtering_approach: Optional[str] = None,
+    persist: bool = True
 ) -> Dict[str, pd.DataFrame]:
     """
     Executes full Stage 3 preprocessing for RNA-Seq cohort GSE164416:
-    1. Low-count filtering based on PreprocessingConfig
+    1. Low-count filtering (Approach 1 Heuristic or Approach 2 Distribution-Aware CPM)
     2. DESeq2 size-factor estimation and log2 transformation
     3. CPM scaling and log2 transformation
-    4. Persists primary normalized matrix (based on rnaseq_scaling_method) and alternate outputs
+    4. Optionally persists primary normalized matrix and alternative outputs
     """
     cohort_cfg = config.cohorts["GSE164416"]
     norm_cfg = config.normalization
@@ -400,12 +575,7 @@ def preprocess_rnaseq_cohort(
     log_step("STAGE-3: GSE164416", f"Starting RNA-Seq Preprocessing Pipeline ({df_raw.shape[0]} genes x {df_raw.shape[1]} samples)")
 
     # 1. Filter low counts
-    df_filtered = filter_low_counts(
-        df_raw,
-        min_total_counts=norm_cfg.rnaseq_min_total_counts,
-        min_samples_expressing=norm_cfg.rnaseq_min_samples_expressing,
-        min_count=1
-    )
+    df_filtered = filter_rnaseq_counts(df_raw, config=config, approach=filtering_approach)
 
     # 2. DESeq2 Size Factor Normalization
     size_factors = calculate_deseq2_size_factors(df_filtered)
@@ -414,20 +584,6 @@ def preprocess_rnaseq_cohort(
     # 3. CPM log2 transformation
     df_cpm_log2 = calculate_cpm_log2(df_filtered, pseudo_count=norm_cfg.rnaseq_pseudo_count)
 
-    dest = config.paths.data_processed
-    dest.mkdir(parents=True, exist_ok=True)
-
-    # Save size factors table
-    sf_path = dest / "GSE164416_deseq2_size_factors.csv"
-    size_factors.to_frame(name="size_factor").to_csv(sf_path)
-
-    # Save both representations for downstream flexibility
-    deseq2_path = dest / "GSE164416_deseq2_normalized.csv.gz"
-    df_deseq2_log2.to_csv(deseq2_path, compression="gzip")
-
-    cpm_path = dest / "GSE164416_log2_cpm.csv.gz"
-    df_cpm_log2.to_csv(cpm_path, compression="gzip")
-
     # Select primary normalized output according to config
     primary_method = norm_cfg.rnaseq_scaling_method.lower()
     if primary_method in ["deseq2", "deseq_median"]:
@@ -435,12 +591,25 @@ def preprocess_rnaseq_cohort(
     else:  # Default 'log2_cpm'
         primary_df = df_cpm_log2
 
-    primary_out = dest / cohort_cfg.normalized_output_filename
-    primary_df.to_csv(primary_out, compression="gzip")
+    if persist:
+        dest = config.paths.data_processed
+        dest.mkdir(parents=True, exist_ok=True)
 
-    log_step("STAGE-3: GSE164416", f"Primary normalized counts saved to {primary_out.name} ({primary_df.shape[0]} genes x {primary_df.shape[1]} samples, scaling={primary_method})")
-    log_step("STAGE-3: GSE164416", f"DESeq2 normalized matrix saved to {deseq2_path.name}")
-    log_step("STAGE-3: GSE164416", f"Log2-CPM normalized matrix saved to {cpm_path.name}")
+        sf_path = dest / "GSE164416_deseq2_size_factors.csv"
+        size_factors.to_frame(name="size_factor").to_csv(sf_path)
+
+        deseq2_path = dest / "GSE164416_deseq2_normalized.csv.gz"
+        df_deseq2_log2.to_csv(deseq2_path, compression="gzip")
+
+        cpm_path = dest / "GSE164416_log2_cpm.csv.gz"
+        df_cpm_log2.to_csv(cpm_path, compression="gzip")
+
+        primary_out = dest / cohort_cfg.normalized_output_filename
+        primary_df.to_csv(primary_out, compression="gzip")
+
+        log_step("STAGE-3: GSE164416", f"Primary normalized counts saved to {primary_out.name} ({primary_df.shape[0]} genes x {primary_df.shape[1]} samples, scaling={primary_method})")
+        log_step("STAGE-3: GSE164416", f"DESeq2 normalized matrix saved to {deseq2_path.name}")
+        log_step("STAGE-3: GSE164416", f"Log2-CPM normalized matrix saved to {cpm_path.name}")
 
     return {
         "primary": primary_df,
@@ -450,7 +619,79 @@ def preprocess_rnaseq_cohort(
     }
 
 
-# --- Stage 3 Orchestrator & Output Validation ---
+# ==============================================================================
+# Comparative Filtering Evaluation Matrix Generator
+# ==============================================================================
+
+def generate_comparative_filtering_matrices(
+    raw_matrices: Dict[str, pd.DataFrame],
+    config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG
+) -> Dict[str, Any]:
+    """
+    Executes a complete comparative pipeline run across both low-expression filtering approaches:
+    - Approach 1: Heuristic / Absolute Floor (Microarray background floor <= 80%; RNA-Seq counts sum >= 10)
+    - Approach 2: Distribution-Aware / Cohort-Fraction (Microarray IQR variance; RNA-Seq CPM >= 1.0)
+
+    Returns:
+    - 'approach_1': Dictionary of processed matrices under Approach 1
+    - 'approach_2': Dictionary of processed matrices under Approach 2
+    - 'metrics': DataFrame comparing gene counts, sparsity, and overlap statistics
+    """
+    log_step("STAGE-3: COMPARATIVE", "Executing Dual Filtering Comparative Analysis across all cohorts...")
+
+    # Run Approach 1
+    m1_26168 = preprocess_microarray_cohort("GSE26168", raw_matrices["GSE26168"], config=config, filtering_approach="background", persist=False)
+    m1_15932 = preprocess_microarray_cohort("GSE15932", raw_matrices["GSE15932"], config=config, filtering_approach="background", persist=False)
+    m1_164416_res = preprocess_rnaseq_cohort(raw_matrices["GSE164416"], config=config, filtering_approach="heuristic", persist=False)
+    m1_164416 = m1_164416_res["primary"]
+
+    # Run Approach 2
+    m2_26168 = preprocess_microarray_cohort("GSE26168", raw_matrices["GSE26168"], config=config, filtering_approach="variance", persist=False)
+    m2_15932 = preprocess_microarray_cohort("GSE15932", raw_matrices["GSE15932"], config=config, filtering_approach="variance", persist=False)
+    m2_164416_res = preprocess_rnaseq_cohort(raw_matrices["GSE164416"], config=config, filtering_approach="distribution_aware", persist=False)
+    m2_164416 = m2_164416_res["primary"]
+
+    cohort_pairs = [
+        ("GSE26168", raw_matrices["GSE26168"], m1_26168, m2_26168),
+        ("GSE15932", raw_matrices["GSE15932"], m1_15932, m2_15932),
+        ("GSE164416", raw_matrices["GSE164416"], m1_164416, m2_164416),
+    ]
+
+    records = []
+    for c_name, raw_df, df1, df2 in cohort_pairs:
+        g1 = set(df1.index)
+        g2 = set(df2.index)
+        intersection = len(g1.intersection(g2))
+        union = len(g1.union(g2))
+        jaccard = intersection / union if union > 0 else 1.0
+
+        records.append({
+            "cohort": c_name,
+            "raw_features": raw_df.shape[0],
+            "samples": raw_df.shape[1],
+            "appr1_features": df1.shape[0],
+            "appr1_sparsity_pct": float((df1 == 0).sum().sum() / df1.size * 100),
+            "appr1_intensity_mean": float(df1.values.mean()),
+            "appr2_features": df2.shape[0],
+            "appr2_sparsity_pct": float((df2 == 0).sum().sum() / df2.size * 100),
+            "appr2_intensity_mean": float(df2.values.mean()),
+            "overlap_features": intersection,
+            "jaccard_similarity": round(jaccard, 4)
+        })
+
+    metrics_df = pd.DataFrame(records)
+    log_step("STAGE-3: COMPARATIVE", "Comparative filtering evaluation completed successfully.")
+
+    return {
+        "approach_1": {"GSE26168": m1_26168, "GSE15932": m1_15932, "GSE164416": m1_164416},
+        "approach_2": {"GSE26168": m2_26168, "GSE15932": m2_15932, "GSE164416": m2_164416},
+        "metrics": metrics_df
+    }
+
+
+# ==============================================================================
+# Stage 3 Orchestrator & Output Validation
+# ==============================================================================
 
 def run_stage_3_normalization(
     config: PreprocessingConfig = DEFAULT_PREPROCESSING_CONFIG,
@@ -458,9 +699,9 @@ def run_stage_3_normalization(
 ) -> Dict[str, pd.DataFrame]:
     """
     Executes Stage 3 across all three cohorts:
-    - GSE26168 (Microarray): log2 -> quantile norm -> HGNC mapping
-    - GSE15932 (Microarray): log2 -> quantile norm -> HGNC mapping
-    - GSE164416 (RNA-Seq): low count filter -> DESeq2 size-factors / log2 CPM
+    - GSE26168 (Microarray): log2 -> quantile norm -> HGNC mapping -> filtering
+    - GSE15932 (Microarray): log2 -> quantile norm -> HGNC mapping -> filtering
+    - GSE164416 (RNA-Seq): low count filtering -> DESeq2 size-factors / log2 CPM
     """
     dest = config.paths.data_processed
     dest.mkdir(parents=True, exist_ok=True)
@@ -479,17 +720,17 @@ def run_stage_3_normalization(
 
     # 1. GSE26168 (Microarray)
     df_26168_raw = _get_raw("GSE26168")
-    df_26168_norm = preprocess_microarray_cohort("GSE26168", df_26168_raw, config)
+    df_26168_norm = preprocess_microarray_cohort("GSE26168", df_26168_raw, config=config, persist=True)
     normalized_results["GSE26168"] = df_26168_norm
 
     # 2. GSE15932 (Microarray)
     df_15932_raw = _get_raw("GSE15932")
-    df_15932_norm = preprocess_microarray_cohort("GSE15932", df_15932_raw, config)
+    df_15932_norm = preprocess_microarray_cohort("GSE15932", df_15932_raw, config=config, persist=True)
     normalized_results["GSE15932"] = df_15932_norm
 
     # 3. GSE164416 (RNA-Seq)
     df_164416_raw = _get_raw("GSE164416")
-    rnaseq_results = preprocess_rnaseq_cohort(df_164416_raw, config)
+    rnaseq_results = preprocess_rnaseq_cohort(df_164416_raw, config=config, persist=True)
     normalized_results["GSE164416"] = rnaseq_results["primary"]
 
     log_step("STAGE-3", "Completed Stage 3 Normalization & Preprocessing across all 3 cohorts.")
