@@ -79,6 +79,20 @@ Each notebook includes starter cells for reproducibility, shared paths, and plac
 
 ---
 
+## Analysis Success Criteria
+
+The machine learning pipeline is considered successful when it meets all three of the following goals:
+
+| Dimension                         | Core Metrics                                          | Target Benchmark                                                                                 |
+|-----------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------|
+| **Diagnostic accuracy**           | AUC-ROC, sensitivity, specificity, balanced accuracy  | AUC-ROC >= 0.85; sensitivity >= 80-85%; specificity >= 80%; balanced accuracy >= 0.80            |
+| **Biomarker parsimony**           | Final gene-panel size, feature stability across folds | Reduce 20,000+ transcripts to a stable 5-15 gene panel; top genes selected in >= 80% of CV folds |
+| **Cross-cohort generalizability** | 10-fold CV stability, external AUC on `GSE15932`      | Fold-to-fold AUC SD <= 0.05; external AUC >= 0.80 with < 10% performance drop from `GSE26168`    |
+
+In short: the model should classify well, use a small and stable biomarker panel, and retain performance on the independent validation cohort.
+
+---
+
 ## Data Governance & Standards
 
 All datasets utilized in this study are derived from peer-reviewed, open-access public repositories (NCBI GEO / EMBL-EBI ArrayExpress) adhering strictly to MIAME (Minimum Information About a Microarray Experiment) standards.
