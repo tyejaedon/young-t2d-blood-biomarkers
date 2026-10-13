@@ -63,6 +63,9 @@ This document breaks the project goal — **identifying gene expression biomarke
 - **I-13: Produce QC visualizations**
   - Create boxplots, PCA plots, and any needed sample-level diagnostics.
   - **Acceptance criteria:** Figures are saved to `../results/figures` and support the QC conclusion.
+- **I-38: Exploratory Data Analysis (EDA): Descriptive statistics, exploratory visualisations, and pattern identification** — **Complete**
+  - Compute descriptive statistics across cohorts, generate distribution/sample correlation/PCA visualisations, and assess phenotypic pattern separation and confounders.
+  - **Acceptance criteria:** Tables saved to `results/tables/`, high-resolution headless figures saved to `results/figures/`, and pattern insights documented in `notebooks/02_qc_preprocessing.ipynb`.
 
 **Milestone deliverable:** Clean, normalized matrices with QC evidence that samples are usable.
 
@@ -151,4 +154,3 @@ This document breaks the project goal — **identifying gene expression biomarke
 - The plan follows the project blueprint and checkpoint structure in `architecture`.
 - Issues are intentionally ordered to support a strict biological-first workflow.
 - If you want, this document can be split into separate GitHub-style issue templates or converted into a kanban-ready checklist.
-
