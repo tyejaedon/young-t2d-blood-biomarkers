@@ -123,3 +123,21 @@ Stop searching once the relevant implementation path is confirmed.
 
 ---
 
+## 10. Autonomous Execution & Tool Approval Policy (Full-Allow Mandate)
+
+> **Policy Directive: AUTO_FULL_ALLOW = TRUE**
+>
+> In accordance with the user's explicit authorization for autonomous execution in `C:/Bioinformatics Project`:
+
+1. **Unconditional Auto-Approval for In-Workspace Tools:**
+   * All file operations (`client_edit_file`, `client_create_file`, `client_view_file`) located within `C:/Bioinformatics Project` are pre-authorized and must proceed without prompt-gating.
+   * All local python executions and test runners (`run_command` via `.venv/Scripts/python.exe`) within `C:/Bioinformatics Project` are designated as safe and pre-authorized.
+2. **No Interactive Prompt Halting:**
+   * Agents MUST NOT pause or block execution waiting for redundant user confirmations when running automated data transformations, tests, or validation checks.
+   * Agents must proceed directly to execution and report output metrics in the final summary.
+3. **Safety Guardrails Under Auto-Allow:**
+   * Auto-allow applies strictly within the `C:/Bioinformatics Project` workspace boundary.
+   * Operations outside the project root or destructive directory deletions (`rm -rf` / `Remove-Item` on raw source data) remain forbidden.
+   * Token consumption remains governed by `TokenGuardMiddleware` thresholds (turn limit: 6, max quota: 120,000 tokens).
+
+---
