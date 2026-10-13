@@ -1,0 +1,49 @@
+@startuml
+title Young-Onset T2D Biomarker Pipeline - Sequence Diagram
+autonumber
+actor Researcher
+participant "JupyterLab" as JupyterLab
+participant "00_project_setup.ipynb" as Setup
+participant "01_data_inventory.ipynb" as Inventory
+participant "02_qc_preprocessing.ipynb" as Preprocess
+participant "03_differential_expression.ipynb" as DEA
+participant "04_pathway_enrichment.ipynb" as Enrichment
+participant "05_biomarker_modeling.ipynb" as Modeling
+participant "data/raw" as RawData
+participant "data/processed" as ProcessedData
+participant "results/figures" as Figures
+participant "results/tables" as Tables
+
+Researcher -> JupyterLab : open project workspace
+Researcher -> Setup : run setup cells
+Setup -> RawData : create/check input structure
+Setup -> ProcessedData : create/check output structure
+Setup -> Figures : create/check output structure
+Setup -> Tables : create/check output structure
+
+Researcher -> Inventory : load GEO metadata
+Inventory -> RawData : read raw files
+Inventory -> Tables : write inventory summary
+
+Researcher -> Preprocess : run QC and normalization
+Preprocess -> RawData : ingest expression data
+Preprocess -> ProcessedData : save cleaned matrix
+Preprocess -> Figures : save QC plots
+
+Researcher -> DEA : run differential expression analysis
+DEA -> ProcessedData : read normalized matrix
+DEA -> Tables : save DEG results
+DEA -> Figures : save volcano/PCA summaries
+
+Researcher -> Enrichment : run pathway analysis
+Enrichment -> Tables : save enriched pathways
+Enrichment -> Figures : save pathway plots
+
+Researcher -> Modeling : train biomarker classifier
+Modeling -> ProcessedData : read selected features
+Modeling -> Tables : save model metrics and biomarker panel
+Modeling -> Figures : save ROC and feature importance plots
+
+Modeling --> Researcher : deliver validated biomarker candidates
+
+@enduml

@@ -1,0 +1,58 @@
+@startuml
+title Young-Onset T2D Biomarker Pipeline - System Architecture
+skinparam componentStyle rectangle
+left to right direction
+
+cloud "External Public Data Sources" {
+  database "NCBI GEO\nGSE26168" as GSE26168
+  database "NCBI GEO\nGSE15932" as GSE15932
+  database "NCBI GEO\nGSE164416" as GSE164416
+}
+
+package "Analysis Workspace" {
+  [JupyterLab] as JupyterLab
+  [Project Setup Notebook] as Setup
+  [Data Inventory Notebook] as Inventory
+  [QC / Preprocessing Notebook] as Preprocess
+  [Differential Expression Notebook] as DEA
+  [Pathway Enrichment Notebook] as Enrichment
+  [Biomarker Modeling Notebook] as Modeling
+}
+
+package "Storage Layer" {
+  folder "data/raw" as Raw
+  folder "data/processed" as Processed
+  folder "results/figures" as Figures
+  folder "results/tables" as Tables
+}
+
+GSE26168 --> Raw
+GSE15932 --> Raw
+GSE164416 --> Raw
+
+JupyterLab --> Setup
+JupyterLab --> Inventory
+JupyterLab --> Preprocess
+JupyterLab --> DEA
+JupyterLab --> Enrichment
+JupyterLab --> Modeling
+
+Setup --> Raw : create structure
+Setup --> Processed : create structure
+Setup --> Figures : create structure
+Setup --> Tables : create structure
+
+Inventory --> Raw : document metadata
+Preprocess --> Raw : ingest and clean
+Preprocess --> Processed : normalize and save
+Preprocess --> Figures : QC visualization
+DEA --> Processed : analyze matrix
+DEA --> Tables : export DEGs
+DEA --> Figures : export volcano/PCA plots
+Enrichment --> Tables : export pathway summaries
+Enrichment --> Figures : export enrichment plots
+Modeling --> Processed : use selected features
+Modeling --> Tables : export biomarker metrics
+Modeling --> Figures : export ROC / feature plots
+
+@enduml
