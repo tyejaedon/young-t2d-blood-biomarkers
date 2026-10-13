@@ -1,0 +1,3 @@
+filtering_approach,filtering_strategy,probe_aggregation,features_tested,deg_count,up_regulated,down_regulated,nominal_deg_count,min_padj,concordant_shared_with_other,concordance_rate_pct
+Approach 1: Heuristic Background Floor,Empirical background floor (p20 threshold in >=20% samples),mean,17496,24,12,12,2423,4.495589968183703e-05,19,79.17
+Approach 2: Distribution-Aware Variance Floor,Non-specific variance pruning (bottom 20% IQR) + max_mean probe collapse,max_mean,14905,25,8,17,2512,0.00037196900943118163,19,76.0
