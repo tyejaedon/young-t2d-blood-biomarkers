@@ -1,0 +1,4 @@
+cohort,platform,tissue_source,total_samples,clinical_groups,diabetes_status_distribution,sex_distribution,age_years_summary,fbs_mg_dl_summary
+GSE26168,Microarray (Illumina HumanRef-8),Whole Blood,24,"{'Type 2 Diabetes': 9, 'Control': 8, 'Impaired Fasting Glucose': 7}","{'Type 2 Diabetes': 9, 'Normoglycemic': 8, 'Pre-Diabetes': 7}",{'Male': 24},N/A (Constrained Young Adults),N/A (Clinical Diagnosis Criteria)
+GSE15932,Microarray (Affymetrix HG-U133_Plus_2),PBMC,32,"{'Pancreatic Cancer with Diabetes': 8, 'Type 2 Diabetes': 8, 'Pancreatic Cancer (No Diabetes)': 8, 'Control': 8}","{'Type 2 Diabetes': 16, 'Normoglycemic': 16}","{'Male': 18, 'Female': 14}","Mean: 63.7 ± 9.3 (Median: 63.5, IQR: 12.2, Range: 43-85)","Mean: 130.0 ± 31.5 (Median: 126.0, IQR: 37.0, Range: 88-190)"
+GSE164416,RNA-Seq (HTSeq counts),Pancreatic Islets,133,{'Islet Donor': 133},{'Donor Tissue': 133},{'Unspecified': 133},N/A (Constrained Young Adults),N/A (Clinical Diagnosis Criteria)

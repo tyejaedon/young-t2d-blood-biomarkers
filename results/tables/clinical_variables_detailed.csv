@@ -1,0 +1,9 @@
+cohort,clinical_group,diabetes_status,n_samples,males,females,unspecified_sex,age_mean,age_std,age_median,age_iqr,age_min,age_max,fbs_mean,fbs_std,fbs_median,fbs_iqr,fbs_min,fbs_max
+GSE15932,Control,Normoglycemic,8,4,4,0,,,,,,,,,,,,
+GSE15932,Pancreatic Cancer (No Diabetes),Normoglycemic,8,5,3,0,61.125,5.841660722773962,60.5,5.5,51.0,71.0,97.5,6.324555320336759,100.5,9.25,88.0,104.0
+GSE15932,Pancreatic Cancer with Diabetes,Type 2 Diabetes,8,3,5,0,58.5,9.273618495495704,60.5,8.5,43.0,70.0,154.625,27.10264878989822,141.0,48.5,129.0,190.0
+GSE15932,Type 2 Diabetes,Type 2 Diabetes,8,6,2,0,71.375,7.52021086330506,72.0,4.0,58.0,85.0,137.875,22.831291184312313,126.0,9.0,126.0,185.0
+GSE164416,Islet Donor,Donor Tissue,133,0,0,133,,,,,,,,,,,,
+GSE26168,Control,Normoglycemic,8,8,0,0,,,,,,,,,,,,
+GSE26168,Impaired Fasting Glucose,Pre-Diabetes,7,7,0,0,,,,,,,,,,,,
+GSE26168,Type 2 Diabetes,Type 2 Diabetes,9,9,0,0,,,,,,,,,,,,
