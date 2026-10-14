@@ -1,0 +1,17 @@
+{
+  "permission": "always-proceed",
+  "terminal": {
+    "sandbox": true,
+    "max_output_tokens": 4000
+  },
+  "context": {
+    "ignore": [
+      "**/node_modules/**",
+      "**/.venv/**",
+      "**/__pycache__/**",
+      "**/*.parquet",
+      "**/*.csv"
+    ]
+  }
+}
+

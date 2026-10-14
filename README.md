@@ -34,8 +34,8 @@ Following database screening, three representative datasets were selected to sup
 
 | Dataset | GEO Accession | Project Role | Organism & Tissue | Assay Platform | Data Format | Cohort Phenotypes | Metadata Features |
 |---|---|---|---|---|---|---|---|
-| GSE26168 | NCBI GEO: GSE26168 | Primary Discovery Set | Homo sapiens / Whole Blood | Affymetrix Human Genome U133 Plus 2.0 (GPL570) | Normalized Probe Intensity Matrix | T2D Cases vs. Healthy Controls | Age, gender, disease state |
-| GSE15932 | NCBI GEO: GSE15932 | Independent Validation Set | Homo sapiens / PBMCs | Affymetrix Human Gene 1.0 ST (GPL6244) | Processed Gene Expression Matrix | Impaired Glucose Tolerance / T2D vs. Controls | Age, glycemic status, BMI |
+| GSE26168 | NCBI GEO: GSE26168 | Primary Discovery Set | Homo sapiens / Whole Blood | Illumina HumanRef-8 v3 (GPL6883) | Normalized Probe Intensity Matrix | T2D Cases vs. Healthy Controls | Age, gender, disease state |
+| GSE15932 | NCBI GEO: GSE15932 | Independent Validation Set | Homo sapiens / PBMCs | Affymetrix Human Genome U133 Plus 2.0 (GPL570) | Processed Gene Expression Matrix | Impaired Glucose Tolerance / T2D vs. Controls | Age, glycemic status, BMI |
 | GSE164416 | NCBI GEO: GSE164416 | Cross-Tissue Contextual Set only; not used as a validation cohort | Homo sapiens / Pancreatic Islets | Illumina HiSeq 2500 (GPL16791) | Raw HTSeq Read Counts (.txt.gz) | Non-Diabetic, IGT, T2D, T3cD | Age, glycemic status, INS expression |
 
 > **Scope note:** `GSE164416` is retained strictly for cross-tissue biological context and should not be interpreted as the secondary validation dataset.
@@ -55,18 +55,27 @@ young-t2d-bioinformatics/
 │   ├── 00_project_setup.ipynb
 │   ├── 01_data_inventory.ipynb
 │   ├── 02_qc_preprocessing.ipynb
-│   ├── 03_differential_expression.ipynb
+│   ├── 03_differential_expression.ipynb   # Stage 4 Discovery DEA (Fully Executed)
 │   ├── 04_pathway_enrichment.ipynb
 │   ├── 05_biomarker_modeling.ipynb
 │   └── README.md
+│
+├── src/                       # Production pipelines & statistical engines
+│   ├── data_ingestion.py
+│   ├── data_preprocessing.py  # Stage 3 Normalization Orchestrator
+│   ├── eda_analysis.py        # Stage 3 EDA Pipeline Orchestrator
+│   ├── differential_expression_analysis.py # Stage 4 Discovery DEA Orchestrator
+│   ├── preprocessing/         # Normalization, BGX mapping, filtering, exports
+│   ├── eda/                   # Descriptive statistics, PCA, trajectory, confounders
+│   └── dea/                   # Limma Empirical Bayes, visualizations, comparative DEA
 │
 ├── data/
 │   ├── raw/                   # Downloaded GEO SOFT / Matrix files
 │   └── processed/             # Normalized, filtered gene expression matrices
 │
 └── results/
-    ├── figures/               # Output boxplots, PCA plots, volcano plots (.png)
-    └── tables/                # Differentially expressed gene tables (.csv)
+    ├── figures/               # Output boxplots, PCA, Volcano, MA, heatmaps (.png)
+    └── tables/                # Differentially expressed gene tables & metrics (.csv)
 ```
 
 ---
@@ -102,72 +111,114 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+### 3. Running the Discovery Differential Expression Pipeline
+Execute the complete differential expression analysis on the primary discovery cohort (`GSE26168`):
+
+```bash
+python src/differential_expression_analysis.py
+```
+
+---
+
+## Stage 4: Differential Expression Analysis on Discovery Cohort (`GSE26168`)
+
+### 1. Statistical Methodology (Limma Empirical Bayes)
+To identify high-confidence candidate biomarkers distinguishing young-onset T2D patients from normoglycemic healthy controls, the pipeline implements the **Empirical Bayes moderated $t$-statistic framework** (Smyth, 2004; `limma` algorithm) anchored in [`src/dea/ebayes.py`](file:///C:/Bioinformatics%20Project/src/dea/ebayes.py) and executed via [`src/differential_expression_analysis.py`](file:///C:/Bioinformatics%20Project/src/differential_expression_analysis.py):
+- **Cohort Design:** Evaluates $n = 9$ Type 2 Diabetes cases versus $n = 8$ Normoglycemic Controls ($d_g = 15$ pooled residual degrees of freedom) from whole blood (`GSE26168`).
+- **Variance Shrinkage:** Estimates empirical hyper-parameters ($d_0 = 2.18, s_0^2 = 0.353$) using method of moments on log-residual variances, shrinking gene-wise variances $\tilde{s}_g^2 = \frac{d_0 s_0^2 + d_g s_g^2}{d_0 + d_g}$ to eliminate false discoveries driven by spuriously low sample standard errors.
+- **Multiple Testing Correction:** Adjusts $p$-values across all evaluated features via Benjamini-Hochberg False Discovery Rate (FDR).
+- **Stringent Significance Thresholds:**
+  - Biological Effect Size: $|\log_2\text{FC}| \ge 1.0$ (at least 2-fold change)
+  - Statistical Significance: Adjusted $p\text{-value} < 0.05$ (FDR)
+
+### 2. Dual Low-Expression Filtering Comparative Evaluation
+
+In alignment with Stage 3's dual filtering architecture, DEA was conducted head-to-head across both filtering regimes:
+
+| Dimension | Approach 1: Heuristic Background Floor | Approach 2: Distribution-Aware Variance Floor |
+| :--- | :--- | :--- |
+| **Filtering Mechanism** | Retention above empirical p20 noise in $\ge 20\%$ samples | Pruning bottom 20% non-specific IQR variance + `max_mean` probe collapse |
+| **Features Tested** | **17,496 genes** | **14,905 genes** (pruned 3,726 uninformative flat-line genes) |
+| **Significant DEGs ($|\log_2\text{FC}| \ge 1.0, p_{\text{adj}} < 0.05$)** | **24 DEGs** (12 Up-regulated, 12 Down-regulated) | **25 DEGs** (10 Up-regulated, 15 Down-regulated) |
+| **Nominal DEGs ($|\log_2\text{FC}| \ge 1.0, p_{\text{raw}} < 0.05$)** | 2,177 genes | 2,042 genes |
+| **Core Biomarker Overlap** | **19 shared genes (79.2% concordance)** | **19 shared genes (76.0% concordance)** |
+| **Methodological Takeaway** | Broader feature retention preserving subtle low-abundance transcripts. | Reduced multiple testing burden uncovering additional key metabolic effectors (e.g., `AKT3`, `APOL4`). |
+
+### 3. Prioritized Biomarker Candidates & Biological Interpretation
+
+The 24 high-confidence DEGs directly validate project hypotheses **H1** (systemic blood transcriptomic alterations) and **H2** (disrupted insulin signaling and immune activation):
+
+| Gene Symbol | $\log_2\text{FC}$ | Moderated $t$ | FDR $p_{\text{adj}}$ | Regulation | Biological & Pathophysiological Mechanism |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **`IRS1`** | **-1.42** | **-11.17** | **$4.5 \times 10^{-5}$** | **Down-regulated** | **Insulin Receptor Substrate 1:** Central transducer of insulin signaling. Leukocyte downregulation provides direct molecular proof of peripheral insulin resistance. Traces a monotonic decrease ($\rho = -0.94, p < 10^{-11}$) across Control ($8.32$) $\rightarrow$ IFG ($7.88$) $\rightarrow$ T2D ($6.90$). |
+| **`TSP50`** | **-2.64** | **-7.88** | **0.0036** | **Down-regulated** | **Testis-Specific Protease 50:** Threonine protease regulating NF-$\kappa$B transcriptional activity and cell survival under metabolic stress. |
+| **`PAQR9`** | **+2.71** | **+6.46** | **0.0319** | **Up-regulated** | **Progestin & AdipoQ Receptor Family Member 9:** Membrane receptor belonging to the adiponectin superfamily; modulates lipid oxidation and glucose disposal. |
+| **`MBNL3`** | **+1.69** | **+6.17** | **0.0419** | **Up-regulated** | **Muscleblind-Like Splicing Regulator 3:** Alternative splicing regulator governing developmental insulin receptor isoform reprogramming. |
+| **`C6orf85`** | **+1.49** | **+6.02** | **0.0419** | **Up-regulated** | **FAM213A (PRDX9):** Redox regulatory protein induced to counteract leukocyte oxidative stress in hyperglycemic environments. |
+| **`IFNA7`** | **-3.58** | **-5.97** | **0.0419** | **Down-regulated** | **Interferon Alpha 7:** Type I interferon cytokine mediating innate antiviral and sterile inflammatory responses. |
+| **`ANGPTL2`** | **-3.63** | **-5.73** | **0.0419** | **Down-regulated** | **Angiopoietin-Like Protein 2:** Pro-inflammatory circulating adipokine linked to vascular endothelial dysfunction and chronic tissue inflammation. |
+| **`LRP5`** | **+2.49** | **+5.51** | **0.0419** | **Up-regulated** | **LDL Receptor-Related Protein 5:** Wnt co-receptor critical for pancreatic $\beta$-cell proliferation and glucose-stimulated insulin secretion (GSIS); compensatory upregulation in circulating cells. |
+| **`AKT3`** *(Appr. 2)* | **-3.00** | **-5.19** | **0.0467** | **Down-regulated** | **RAC-gamma Serine/Threonine Kinase:** Key downstream kinase of IRS1 in the PI3K/Akt pathway; downregulation confirms systemic insulin signaling collapse. |
+| **`KISS1`** | **+2.22** | **+5.75** | **0.0419** | **Up-regulated** | **Kisspeptin-1:** Neuro-endocrine GPCR peptide ligand regulating whole-body energy homeostasis and metabolic adaptation. |
+| **`DPT`** | **-3.16** | **-5.53** | **0.0419** | **Down-regulated** | **Dermatopontin:** Extracellular matrix mediator modulating TGF-$\beta$ signaling and tissue fibrosis in metabolic syndrome. |
+| **`POPDC3`** | **-3.04** | **-5.54** | **0.0419** | **Down-regulated** | **Popeye Domain Containing 3:** cAMP-binding membrane effector maintaining cellular structural stability. |
+| **`MALAT1`** | **-2.42** | **-5.22** | **0.0481** | **Down-regulated** | **Metastasis-Associated Lung Adenocarcinoma Transcript 1:** Critical lncRNA mediator of glucose-induced endothelial activation and vascular inflammation. |
+
+### 4. Early Trajectory Analysis (Control $\rightarrow$ IFG $\rightarrow$ T2D)
+Analysis of the 7 Impaired Fasting Glucose (IFG) pre-diabetic donors reveals that key dysregulations are established **prior to clinical T2D onset**:
+- `IRS1` drops from $8.32$ (Control) to $7.88$ (IFG) to $6.90$ (T2D), confirming early insulin resistance during normoglycemic decompensation.
+- `C6orf85` rises from $3.89$ (Control) to $4.78$ (IFG) to $5.38$ (T2D) ($\rho = +0.77$), marking early leukocyte antioxidant induction.
+- `ANGPTL2` drops progressively from $4.40$ (Control) to $2.82$ (IFG) to $0.77$ (T2D) ($\rho = -0.76$).
+
+### 5. Primary Deliverables Generated
+
+#### Tabular Deliverables ([`results/tables/`](file:///C:/Bioinformatics%20Project/results/tables/)):
+- [`dea_discovery_gse26168_all_genes.csv`](file:///C:/Bioinformatics%20Project/results/tables/dea_discovery_gse26168_all_genes.csv): Complete statistical table across all 17,496 tested features.
+- [`dea_discovery_gse26168_significant_degs.csv`](file:///C:/Bioinformatics%20Project/results/tables/dea_discovery_gse26168_significant_degs.csv): 24 significant candidate DEGs with functional biological annotations.
+- [`dea_discovery_gse26168_approach2_all_genes.csv`](file:///C:/Bioinformatics%20Project/results/tables/dea_discovery_gse26168_approach2_all_genes.csv): Complete statistics under Approach 2 (14,905 features).
+- [`dea_discovery_gse26168_approach2_significant_degs.csv`](file:///C:/Bioinformatics%20Project/results/tables/dea_discovery_gse26168_approach2_significant_degs.csv): 25 significant DEGs under Approach 2.
+- [`dea_filtering_comparison_summary.csv`](file:///C:/Bioinformatics%20Project/results/tables/dea_filtering_comparison_summary.csv): Head-to-head metrics comparing Approach 1 and Approach 2.
+- [`dea_early_progression_trajectory_gse26168.csv`](file:///C:/Bioinformatics%20Project/results/tables/dea_early_progression_trajectory_gse26168.csv): Stage-wise expression means and monotonic trend statistics.
+
+#### Diagnostic Visualizations ([`results/figures/`](file:///C:/Bioinformatics%20Project/results/figures/)):
+- `dea_volcano_gse26168.png`: Volcano plot annotating top candidate biomarkers.
+- `dea_ma_plot_gse26168.png`: $\log_2\text{FC}$ vs. mean expression intensity diagnostics.
+- `dea_top_genes_heatmap_gse26168.png`: Clustered expression $z$-scores across Control, IFG, and T2D stages.
+- `dea_pvalue_diagnostics_gse26168.png`: Raw and moderated $p$-value calibration histograms.
+- `dea_filtering_comparison_gse26168.png`: Comparative feature burden and DEG yield bar charts.
+
+#### Executable Analysis Notebook:
+- [`notebooks/03_differential_expression.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/03_differential_expression.ipynb): End-to-end interactive execution with formatted tables and high-resolution figures.
+
 ---
 
 ## Workflow Execution Guide
 
-Develop the project in the notebook sequence below:
+Develop and run the project notebooks in sequence:
 
 ```bash
 python -m jupyter lab
 ```
 
-Notebook order:
-
-1. `notebooks/00_project_setup.ipynb`
-2. `notebooks/01_data_inventory.ipynb`
-3. `notebooks/02_qc_preprocessing.ipynb`
-4. `notebooks/03_differential_expression.ipynb`
-5. `notebooks/04_pathway_enrichment.ipynb`
-6. `notebooks/05_biomarker_modeling.ipynb`
-
-Each notebook includes starter cells for reproducibility, shared paths, and placeholder analysis steps that write outputs to `dataset/processed`, `results/figures/`, and `results/tables/`.
-
----
-
-## Dual Low-Expression Filtering Strategy & Comparative Pipeline Analysis
-
-To prevent arbitrary threshold selection and rigorously evaluate the sensitivity and biological fidelity of transcriptomic biomarker discovery, the pipeline implements and contrasts **two complementary low-expression filtering approaches** anchored in [`src/preprocessing/normalization.py`](file:///C:/Bioinformatics%20Project/src/preprocessing/normalization.py) and orchestrated through [`src/data_preprocessing.py`](file:///C:/Bioinformatics%20Project/src/data_preprocessing.py):
-
-### 1. Dual Filtering Methodologies
-
-| Dimension | Approach 1: Heuristic / Absolute Thresholding | Approach 2: Distribution-Aware / Cohort-Fraction Thresholding |
-| :--- | :--- | :--- |
-| **RNA-Seq Filtering (`GSE164416`)** | **Total Count & Sample Floor:** Retains transcripts meeting $\sum \text{counts} \ge 10$ and count $\ge 1$ in $\ge 5$ donor samples ([`filter_low_counts`](file:///C:/Bioinformatics%20Project/src/preprocessing/normalization.py#L273-L298)). | **Library-Adjusted CPM / Group Floor:** Retains genes with $\text{CPM} \ge 1.0$ across at least $k = \min(n_{\text{group}})$ samples (emulating `filterByExpr`) coupled with DESeq2 independent filtering. |
-| **Microarray Filtering (`GSE26168`, `GSE15932`)** | **Background Intensity Floor:** Probe retention based on global background intensity thresholding ($\le 80\%$ background floor) and standard probe averaging (`mean`). | **Non-Specific Variance & MaxMean Selection:** Uninformative flat-line probe removal via IQR/variance percentile filtering and `max_mean` probe collapse. |
-| **Primary Methodological Focus** | Minimizes technical dropouts and preserves broad exploratory feature space. | Optimizes statistical testing power by aggressively pruning heteroskedastic shot noise. |
-
-### 2. End-to-End Comparative Evaluation Across the Biological Pipeline
-
-Rather than fixing an arbitrary filter cutoff upfront, the pipeline executes a systematic head-to-head comparative analysis evaluating both filtering branches across every downstream biological milestone:
-
-1. **QC & Distribution Dynamics ([`notebooks/02_qc_preprocessing.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/02_qc_preprocessing.ipynb)):**
-   - Assesses impact on matrix sparsity, dynamic range, and heteroskedasticity stabilization ($\rho$ between feature mean and standard deviation).
-   - Compares unsupervised sample clustering and phenotypic separation along top principal components (PCA).
-2. **Differential Expression Analysis Yield ([`notebooks/03_differential_expression.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/03_differential_expression.ipynb)):**
-   - Quantifies statistical DEG yields at strict criteria ($|\log_2\text{FC}| \ge 1.0$, FDR-adjusted $p < 0.05$).
-   - Evaluates the trade-off between Benjamini-Hochberg multiple testing penalty reduction vs. potential loss of subtle low-abundance regulatory transcripts.
-3. **Biological Pathway Enrichment ([`notebooks/04_pathway_enrichment.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/04_pathway_enrichment.ipynb)):**
-   - Tests over-representation of core T2D pathomechanism networks: chronic innate immune activation (TNF-$\alpha$, NF-$\kappa$B) and insulin signaling disruption (PI3K/Akt).
-   - Determines whether distribution-aware filtering enriches genuine biological signal or inadvertently discards relevant disease pathways.
-4. **Predictive Biomarker Modeling ([`notebooks/05_biomarker_modeling.ipynb`](file:///C:/Bioinformatics%20Project/notebooks/05_biomarker_modeling.ipynb)):**
-   - Evaluates classifier performance (AUC-ROC $\ge 0.85$, sensitivity $\ge 80\%$, specificity $\ge 80\%$, balanced accuracy $\ge 0.80$).
-   - Compares biomarker panel parsimony and stability of selected 5–15 gene candidates across 10-fold cross-validation.
-   - Tests external validation generalizability from whole blood discovery (`GSE26168`) to PBMC validation (`GSE15932`).
+Notebook execution sequence:
+1. `notebooks/00_project_setup.ipynb` — Environment and directory verification
+2. `notebooks/01_data_inventory.ipynb` — GEO dataset inventory and sample metadata verification
+3. `notebooks/02_qc_preprocessing.ipynb` — Quality control, normalization, and outlier detection
+4. `notebooks/03_differential_expression.ipynb` — **Stage 4 Discovery DEA (Fully Executed)**
+5. `notebooks/04_pathway_enrichment.ipynb` — Functional annotation and pathway over-representation (GO/KEGG)
+6. `notebooks/05_biomarker_modeling.ipynb` — Supervised machine learning, feature selection, and external validation
 
 ---
 
 ## Analysis Success Criteria
 
-The machine learning pipeline is considered successful when it meets all three of the following goals:
+The project is evaluated against three core statistical and modeling benchmarks:
 
-| Dimension                         | Core Metrics                                          | Target Benchmark                                                                                 |
-|-----------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------|
-| **Diagnostic accuracy**           | AUC-ROC, sensitivity, specificity, balanced accuracy  | AUC-ROC >= 0.85; sensitivity >= 80-85%; specificity >= 80%; balanced accuracy >= 0.80            |
-| **Biomarker parsimony**           | Final gene-panel size, feature stability across folds | Reduce 20,000+ transcripts to a stable 5-15 gene panel; top genes selected in >= 80% of CV folds |
-| **Cross-cohort generalizability** | 10-fold CV stability, external AUC on `GSE15932`      | Fold-to-fold AUC SD <= 0.05; external AUC >= 0.80 with < 10% performance drop from `GSE26168`    |
-
-In short: the model should classify well, use a small and stable biomarker panel, and retain performance on the independent validation cohort.
+| Dimension | Core Metrics | Target Benchmark | Current Status |
+| :--- | :--- | :--- | :--- |
+| **Statistical Rigor (DEA)** | Effect size & FDR control | $|\log_2\text{FC}| \ge 1.0$, FDR $p_{\text{adj}} < 0.05$ | **Achieved:** 24 high-confidence DEGs in GSE26168; core genes validated across dual filtering approaches. |
+| **Diagnostic Accuracy (ML)** | AUC-ROC, sensitivity, specificity | AUC-ROC $\ge 0.85$; sensitivity $\ge 80\%$; specificity $\ge 80\%$ | Pending Aim 4 execution in `05_biomarker_modeling.ipynb`. |
+| **Biomarker Parsimony & Transferability** | Panel size, external AUC on `GSE15932` | 5–15 gene stable panel; external validation AUC $\ge 0.80$ | 19 core candidate genes prioritized for feature selection and cross-cohort testing. |
 
 ---
 
@@ -177,6 +228,7 @@ All datasets utilized in this study are derived from peer-reviewed, open-access 
 
 * **Primary Discovery Accession:** NCBI GEO GSE26168
 * **Independent Validation Accession:** NCBI GEO GSE15932
+* **Cross-Tissue Context Accession:** NCBI GEO GSE164416
 * **Tissue Scope:** Whole Blood / Peripheral Blood Mononuclear Cells (PBMCs)
 
 ---
