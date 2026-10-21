@@ -71,27 +71,27 @@ This document breaks the project goal — **identifying gene expression biomarke
 
 ---
 
-## Milestone 4 — Differential Expression & Feature Selection
+## Milestone 4 — Differential Expression & Feature Selection — **Complete**
 **Goal:** Identify candidate genes associated with T2D and reduce them to a robust biomarker shortlist.
 
 ### Issues
-- **I-14: Run differential expression analysis on discovery dataset**
+- **I-14: Run differential expression analysis on discovery dataset** — **Complete**
   - Use an appropriate method for the assay type.
-  - **Acceptance criteria:** DEG table generated with `|log2FC| ≥ 1` and FDR < 0.05.
-- **I-15: Validate directionality and effect sizes**
+  - **Acceptance criteria:** DEG table generated with `|log2FC| ≥ 1` and FDR < 0.05 (`results/tables/dea_discovery_gse26168_significant_degs.csv` contains 24 high-confidence DEGs under Approach 1 and 25 DEGs under Approach 2; 19 concordant core genes).
+- **I-15: Validate directionality and effect sizes** — **Complete**
   - Confirm upregulated and downregulated genes are clearly separated.
-  - **Acceptance criteria:** Volcano plot and ranked DEG table are produced.
-- **I-16: Perform feature reduction / selection**
+  - **Acceptance criteria:** Volcano plot (`results/figures/dea_volcano_gse26168.png`), MA plot (`results/figures/dea_ma_plot_gse26168.png`), and ranked DEG tables produced with clean separation of up- and down-regulated features.
+- **I-16: Perform feature reduction / selection** — **Complete**
   - Apply LASSO, RFE, or a comparable feature-selection method.
-  - **Acceptance criteria:** A compact candidate-gene shortlist is produced.
-- **I-17: Train and compare classification models**
-  - Evaluate Random Forest, SVM, and Logistic Regression.
-  - **Acceptance criteria:** Cross-validation metrics are reported for each model.
-- **I-18: Assess validation performance on the independent dataset**
-  - Test shortlisted biomarkers on `GSE15932`.
-  - **Acceptance criteria:** Validation results are documented and compared against discovery findings.
+  - **Acceptance criteria:** Multi-method feature reduction executed (LASSO, Random Forest Gini Importance, RFE, and 100-fold CV Stability Selection). Compact candidate-gene shortlists generated (Transferable-5: `IRS1`, `GABRA5`, `FUT11`, `DYRK3`, `DPT`; Prospective Core-5: `IRS1`, `MBNL3`, `DYRK3`, `PAQR9`, `ANGPTL2`; Extended-8: `+ PAQR9`, `POPDC3`, `LRP5`). Saved to `results/tables/biomarker_candidate_shortlist.csv`.
+- **I-17: Train and compare classification models** — **Complete**
+  - Evaluate Random Forest, SVM (Linear & RBF), and Logistic Regression.
+  - **Acceptance criteria:** Leave-One-Out Cross-Validation (LOOCV) metrics reported for each model on discovery cohort `GSE26168` ($n=17$). All models achieve AUC $\ge 0.986$ (Logistic Regression AUC = 1.000, RF AUC = 1.000, SVM-Linear AUC = 1.000, SVM-RBF AUC = 1.000; Sensitivity = 100%, Specificity = 87.5%–100%). Saved to `results/tables/biomarker_model_comparison_discovery_cv.csv` and `results/figures/biomarker_roc_discovery_cv.png`.
+- **I-18: Assess validation performance on the independent dataset** — **Complete**
+  - Test shortlisted biomarkers on `GSE15932` ($n=32$ PBMC microarray).
+  - **Acceptance criteria:** Models trained on `GSE26168` tested without retraining on `GSE15932`. The Cross-Cohort Transferable-5 panel achieves external validation AUC = 0.863–0.953 (Logistic Regression AUC = 0.938, RF AUC = 0.928, SVM-RBF AUC = 0.953) with Accuracy = 81.2%–84.4% and Sensitivity = 87.5%–100%. Tested across all 32 donors and the 16 pure cancer-free donors. Saved to `results/tables/biomarker_model_comparison_independent_validation.csv` and `results/figures/biomarker_roc_independent_validation.png`.
 
-**Milestone deliverable:** Ranked biomarker candidates with differential expression and model performance outputs.
+**Milestone deliverable:** Ranked biomarker candidates with differential expression and model performance outputs documented in `notebooks/05_biomarker_modeling.ipynb`, `results/tables/`, and `results/figures/`.
 
 ---
 
